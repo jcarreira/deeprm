@@ -1,0 +1,2 @@
+pg_su_net_file_190.pkl: imitation learning  python launcher.py --exp_type=pg_su --simu_len=50 --num_ex=1000 --ofile=data/pg_su --out_freq=10
+
