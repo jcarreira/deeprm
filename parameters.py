@@ -9,7 +9,7 @@ class Parameters:
 
         self.output_filename = 'data/tmp'
 
-        self.num_epochs = 10000         # number of training epochs
+        self.num_epochs = 2000#10000         # number of training epochs
         self.simu_len = 10             # length of the busy cycle that repeats itself
         self.num_ex = 1                # number of sequences
 
@@ -26,7 +26,7 @@ class Parameters:
         self.res_slot = 10             # maximum number of available resource slots
         self.max_job_size = 10         # maximum resource request of new work
 
-        self.backlog_size = 60         # backlog queue size
+        self.backlog_size = 20         # backlog queue size
 
         self.max_track_since_new = 10  # track how many time steps since last new jobs
 
@@ -60,7 +60,7 @@ class Parameters:
         self.dismiss_penalty = -1     # penalty for missing a job because the queue is full
 
         self.num_frames = 1           # number of frames to combine and process
-        self.lr_rate = 0.001          # learning rate
+        self.lr_rate = 0.0001          # learning rate
         self.rms_rho = 0.9            # for rms prop
         self.rms_eps = 1e-9           # for rms prop
 
