@@ -32,14 +32,17 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 
 def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
+    #jc. para is parameters
+    #jc. create environemt
+    #jc. what is no_new_job?
     env = environment.Env(pa, render=False, repre=repre, end=end)
 
     pg_learner = pg_network.PGLearner(pa)
 
-    if pg_resume is not None:
-        net_handle = open(pg_resume, 'r')
-        net_params = cPickle.load(net_handle)
-        pg_learner.set_net_params(net_params)
+    #if pg_resume is not None:
+    #    net_handle = open(pg_resume, 'r')
+    #    net_params = cPickle.load(net_handle)
+    #    pg_learner.set_net_params(net_params)
 
     if pa.evaluate_policy_name == "SJF":
         evaluate_policy = other_agents.get_sjf_action
@@ -58,11 +61,21 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
     # print 'nw_time_seqs=', nw_len_seqs
     # print 'nw_size_seqs=', nw_size_seqs
 
-    mem_alloc = 4
+    mem_alloc = 4  #jc what is this?
 
+    # simu_len is simulation length   50
+    # pa.num_ex number of examples    1000
+
+    x_size = pa.simu_len * pa.num_ex * mem_alloc
+    print("x_size: ", x_size)
+
+    # shape = [200K, 1, 20, 124]
     X = np.zeros([pa.simu_len * pa.num_ex * mem_alloc, 1,
                   pa.network_input_height, pa.network_input_width],
                  dtype=theano.config.floatX)
+
+    print("X.shape:", X.shape)
+
     y = np.zeros(pa.simu_len * pa.num_ex * mem_alloc,
                  dtype='int32')
 
@@ -82,6 +95,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
             a = evaluate_policy(env.machine, env.job_slot)
 
+            # what is this if
             if counter < pa.simu_len * pa.num_ex * mem_alloc:
 
                 add_sample(X, y, counter, ob, a)
@@ -111,6 +125,7 @@ def launch(pa, pg_resume=None, render=False, repre='image', end='no_new_job'):
 
     # ----------------------------
     print("Start training...")
+    print("num_epochs: {}".format(pa.num_epochs))
     # ----------------------------
 
     for epoch in xrange(pa.num_epochs):

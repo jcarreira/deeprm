@@ -23,7 +23,7 @@ class Parameters:
 
         self.time_horizon = 20         # number of time steps in the graph
         self.max_job_len = 15          # maximum duration of new jobs
-        self.res_slot = 10             # maximum number of available resource slots
+        self.res_slot = 8             # maximum number of available resource slots
         self.max_job_size = 10         # maximum resource request of new work
 
         self.backlog_size = 20         # backlog queue size
@@ -32,7 +32,7 @@ class Parameters:
 
         self.job_num_cap = 40          # maximum number of distinct colors in current work graph
 
-        self.new_job_rate = 0.7        # lambda in new job arrival Poisson Process
+        self.new_job_rate = 0.8        # lambda in new job arrival Poisson Process
 
         self.discount = 1           # discount factor
 
