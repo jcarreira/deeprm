@@ -19,11 +19,11 @@ class Parameters:
         self.episode_max_length = 200  # enforcing an artificial terminal
 
         self.num_res = 2               # number of resources in the system
-        self.num_nw = 5                # maximum allowed number of work in the queue
+        self.num_nw = 7                # maximum allowed number of work in the queue
 
         self.time_horizon = 20         # number of time steps in the graph
         self.max_job_len = 15          # maximum duration of new jobs
-        self.res_slot = 8             # maximum number of available resource slots
+        self.res_slot = 6              # maximum number of available resource slots
         self.max_job_size = 10         # maximum resource request of new work
 
         self.backlog_size = 20         # backlog queue size
@@ -32,7 +32,7 @@ class Parameters:
 
         self.job_num_cap = 40          # maximum number of distinct colors in current work graph
 
-        self.new_job_rate = 0.8        # lambda in new job arrival Poisson Process
+        self.new_job_rate = 0.99999        # lambda in new job arrival Poisson Process
 
         self.discount = 1           # discount factor
 
@@ -45,9 +45,12 @@ class Parameters:
         self.network_input_height = self.time_horizon
         self.network_input_width = \
             (self.res_slot +
-             self.max_job_size * self.num_nw) * self.num_res + \
+             (self.max_job_size + 1) * self.num_nw) * self.num_res + \
             self.backlog_width + \
             1  # for extra info, 1) time since last new job
+
+        print("self.network_input_width: {}".format(self.network_input_width))
+        print("self.num_nw: {}".format(self.num_nw))
 
         # compact representation
         self.network_compact_dim = (self.num_res + 1) * \
@@ -60,7 +63,7 @@ class Parameters:
         self.dismiss_penalty = -1     # penalty for missing a job because the queue is full
 
         self.num_frames = 1           # number of frames to combine and process
-        self.lr_rate = 0.0001          # learning rate
+        self.lr_rate = 0.0003          # learning rate
         self.rms_rho = 0.9            # for rms prop
         self.rms_eps = 1e-9           # for rms prop
 
@@ -76,7 +79,7 @@ class Parameters:
         self.network_input_height = self.time_horizon
         self.network_input_width = \
             (self.res_slot +
-             self.max_job_size * self.num_nw) * self.num_res + \
+             (self.max_job_size + 1)* self.num_nw) * self.num_res + \
             self.backlog_width + \
             1  # for extra info, 1) time since last new job
 

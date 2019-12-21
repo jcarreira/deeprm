@@ -7,6 +7,8 @@ import parameters
 import pg_network
 import other_agents
 
+import time
+
 
 def discount(x, gamma):
     """
@@ -55,7 +57,10 @@ def get_traj(test_type, pa, env, episode_max_length, pg_resume=None, render=Fals
     for _ in xrange(episode_max_length):
 
         if test_type == 'PG':
+            before = time.time()
             a = pg_learner.choose_action(ob)
+            after = time.time()
+            #print("time elapsed: {:.20f}".format(after-before))
 
         elif test_type == 'Tetris':
             a = other_agents.get_packer_action(env.machine, env.job_slot)
@@ -129,9 +134,57 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
             finish_time = np.array([info.record[i].finish_time for i in xrange(len(info.record))])
             job_len = np.array([info.record[i].len for i in xrange(len(info.record))])
             job_total_size = np.array([np.sum(info.record[i].res_vec) for i in xrange(len(info.record))])
+            prios = np.array([np.sum(info.record[i].prio) for i in xrange(len(info.record))])
+
+            # job slow down per priority
+            print("prios: {}".format(prios))
+            jobslowdown_high = []
+            jobslowdown_low = []
+            joblen_high = []
+            joblen_low = []
+
+            notdone_low = 0
+            notdone_high = 0
+            for i in range(0, len(job_len)):
+              slowdown = (finish_time[i] - enter_time[i]) / job_len[i]
+              #print("finish: {} enter: {} len: {} prio: {}".format(
+              #    finish_time[i], enter_time[i], job_len[i], prios[i]))
+              if prios[i] == 1: # LOW
+                joblen_low.append(job_len[i])
+                if finish_time[i] == -1:
+                  notdone_low += 1
+                else:
+                  jobslowdown_low.append(slowdown)
+              else:
+                joblen_high.append(job_len[i])
+                if finish_time[i] == -1:
+                  notdone_high += 1
+                else:
+                  jobslowdown_high.append(slowdown)
+
+            avg_slowdown_high = 1.0*sum(jobslowdown_high)/len(jobslowdown_high)
+            print("jobslowdown_high: {} avg sd: {} avg len: {}".format(
+              jobslowdown_high, avg_slowdown_high,
+              1.0*sum(joblen_high)/len(joblen_high),
+              ))
+
+            avg_slowdown_low = 1.0*sum(jobslowdown_low)/len(jobslowdown_low)
+            print("jobslowdown_low: {} avg sd: {} avg len: {}".format(
+              jobslowdown_low, avg_slowdown_low,
+              1.0*sum(joblen_low)/len(joblen_low)))
+
+            print("high prio beats low: {}".format(avg_slowdown_high < avg_slowdown_low))
+            #print("jobslowdown high avg: {} not finished: {}".format(
+            #  1.0*sum(jobslowdown_high)/len(jobslowdown_high), notdone_high
+            #  ))
+            #print("jobslowdown low avg: {} not finished: {}".format(
+            #  1.0*sum(jobslowdown_low)/len(jobslowdown_low), notdone_low))
+
 
             finished_idx = (finish_time >= 0)
             unfinished_idx = (finish_time < 0)
+
+            #print("finished_idx: {}".format(finished_idx))
 
             jobs_slow_down[test_type].append(
                 (finish_time[finished_idx] - enter_time[finished_idx]) / job_len[finished_idx]
@@ -170,7 +223,8 @@ def launch(pa, pg_resume=None, render=False, plot=False, repre='image', end='no_
         plt.legend(loc=4)
         plt.xlabel("job slowdown", fontsize=20)
         plt.ylabel("CDF", fontsize=20)
-        # plt.show()
+        #plt.show()
+        #plt.savefig("NEWFIG.pdf")
         plt.savefig(pg_resume + "_slowdown_fig" + ".pdf")
 
     return all_discount_rews, jobs_slow_down

@@ -8,7 +8,7 @@ import parameters
 
 class Env:
     def __init__(self, pa, nw_len_seqs=None, nw_size_seqs=None,
-                 seed=42, render=False, repre='image', end='no_new_job'):
+                 seed=42, render=False, repre='image', end='no_new_job', nw_prios=None):
 
         self.pa = pa
         self.render = render
@@ -27,8 +27,9 @@ class Env:
 
         if nw_len_seqs is None or nw_size_seqs is None:
             # generate new work
-            self.nw_len_seqs, self.nw_size_seqs = \
+            self.nw_len_seqs, self.nw_size_seqs, self.nw_prios = \
                 self.generate_sequence_work(self.pa.simu_len * self.pa.num_ex)
+            #print("Env() nw_prios.shape: {}".format(self.nw_prios.shape))
 
             self.workload = np.zeros(pa.num_res)
             for i in xrange(pa.num_res):
@@ -41,10 +42,17 @@ class Env:
                                            [self.pa.num_ex, self.pa.simu_len])
             self.nw_size_seqs = np.reshape(self.nw_size_seqs,
                                            [self.pa.num_ex, self.pa.simu_len, self.pa.num_res])
+            self.nw_prios = np.reshape(self.nw_prios,
+                                           [self.pa.num_ex, self.pa.simu_len])
+            #print("Env()2 self.nw_prios.shape: {}".format(self.nw_prios.shape))
 
         else:
             self.nw_len_seqs = nw_len_seqs
             self.nw_size_seqs = nw_size_seqs
+            self.nw_prios = nw_prios
+            #print("Env()3 self.nw_prios.shape: {}".format(self.nw_prios.shape))
+            #print("Env()3 self.nw_len_seqs.shape: {}".format(self.nw_len_seqs.shape))
+            #print("Env()3 self.nw_size_seqs.shape: {}".format(self.nw_size_seqs.shape))
 
         self.seq_no = 0  # which example sequence
         self.seq_idx = 0  # index in that sequence
@@ -60,20 +68,27 @@ class Env:
 
         nw_len_seq = np.zeros(simu_len, dtype=int)
         nw_size_seq = np.zeros((simu_len, self.pa.num_res), dtype=int)
+        nw_prios = np.zeros(simu_len, dtype=int)
 
         for i in range(simu_len):
 
             if np.random.rand() < self.pa.new_job_rate:  # a new job comes
 
-                nw_len_seq[i], nw_size_seq[i, :] = self.nw_dist()
+                nw_len_seq[i], nw_size_seq[i, :], nw_prios[i] = self.nw_dist()
+            
+        #print("Env() generate_sequence_work nw_prios.shape: {}".format(nw_prios.shape))
 
-        return nw_len_seq, nw_size_seq
+        return nw_len_seq, nw_size_seq, nw_prios
 
     def get_new_job_from_seq(self, seq_no, seq_idx):
+        #print("get_new_job_from_seq self.nw_prios.shape: {}".format(self.nw_prios.shape))
+        #print("get_new_job_from_seq self.self.nw_size_seqs.shape: {}".format(self.nw_size_seqs.shape))
+        #print("get_new_job_from_seq self.self.nw_len_seqs.shape: {}".format(self.nw_len_seqs.shape))
         new_job = Job(res_vec=self.nw_size_seqs[seq_no, seq_idx, :],
                       job_len=self.nw_len_seqs[seq_no, seq_idx],
                       job_id=len(self.job_record.record),
-                      enter_time=self.curr_time)
+                      enter_time=self.curr_time,
+                      prio=self.nw_prios[seq_no, seq_idx])
         return new_job
 
     def observe(self):
@@ -94,8 +109,18 @@ class Env:
 
                     if self.job_slot.slot[j] is not None:  # fill in a block of work
                         image_repr[: self.job_slot.slot[j].len, ir_pt: ir_pt + self.job_slot.slot[j].res_vec[i]] = 1
+                        if self.job_slot.slot[j].prio == 50: # HIGH
+                          image_repr[: self.job_slot.slot[j].len,
+                                     ir_pt + self.pa.max_job_size:
+                                          ir_pt + self.pa.max_job_size + 1] = 1
+                        elif self.job_slot.slot[j].prio == 1: #LOG
+                          image_repr[: self.job_slot.slot[j].len,
+                                     ir_pt + self.pa.max_job_size:
+                                          ir_pt + self.pa.max_job_size + 1] = 0
+                        else:
+                          raise Exception("unknown prio")
 
-                    ir_pt += self.pa.max_job_size
+                    ir_pt += self.pa.max_job_size + 1
 
             image_repr[: self.job_backlog.curr_size / backlog_width,
                        ir_pt: ir_pt + backlog_width] = 1
@@ -108,6 +133,8 @@ class Env:
                                               float(self.extra_info.max_tracking_time_since_last_job)
             ir_pt += 1
 
+            #print("image_repr.shape: {}".format(image_repr.shape))
+            #print("ir_pt: {}".format(ir_pt))
             assert ir_pt == image_repr.shape[1]
 
             return image_repr
@@ -214,15 +241,15 @@ class Env:
 
         reward = 0
         for j in self.machine.running_job:
-            reward += self.pa.delay_penalty / float(j.len)
+            reward += (self.pa.delay_penalty * j.prio) / float(j.len)
 
         for j in self.job_slot.slot:
             if j is not None:
-                reward += self.pa.hold_penalty / float(j.len)
+                reward += (self.pa.hold_penalty * j.prio) / float(j.len)
 
         for j in self.job_backlog.backlog:
             if j is not None:
-                reward += self.pa.dismiss_penalty / float(j.len)
+                reward += (self.pa.dismiss_penalty * j.prio) / float(j.len)
 
         return reward
 
@@ -334,13 +361,14 @@ class Env:
 
 
 class Job:
-    def __init__(self, res_vec, job_len, job_id, enter_time):
+    def __init__(self, res_vec, job_len, job_id, enter_time, prio):
         self.id = job_id
         self.res_vec = res_vec
         self.len = job_len
         self.enter_time = enter_time
         self.start_time = -1  # not being allocated
         self.finish_time = -1
+        self.prio = prio
 
 
 class JobSlot:

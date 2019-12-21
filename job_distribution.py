@@ -47,6 +47,11 @@ class Dist:
             nw_len = np.random.randint(self.job_len_big_lower,
                                        self.job_len_big_upper + 1)    # 10..15
 
+        if np.random.randint(0, 10) < 3:  # 30% probability
+           nw_prio = 50 # HIGH
+        else:
+           nw_prio = 1 # LOW
+ 
         nw_size = np.zeros(self.num_res)
 
         # -- job resource request --
@@ -69,7 +74,7 @@ class Dist:
         #        nw_size[i] = np.random.randint(self.other_res_lower,
         #                                       self.other_res_upper + 1) # 1..2
 
-        return nw_len, nw_size
+        return nw_len, nw_size, nw_prio
 
 
 def generate_sequence_work(pa, seed=42):
@@ -82,16 +87,21 @@ def generate_sequence_work(pa, seed=42):
 
     nw_len_seq = np.zeros(simu_len, dtype=int)
     nw_size_seq = np.zeros((simu_len, pa.num_res), dtype=int)
+    nw_prios = np.zeros(simu_len, dtype=int)
 
     for i in range(simu_len):
 
         if np.random.rand() < pa.new_job_rate:  # a new job comes
 
-            nw_len_seq[i], nw_size_seq[i, :] = nw_dist()
+            nw_len_seq[i], nw_size_seq[i, :], nw_prios[i] = nw_dist()
 
     nw_len_seq = np.reshape(nw_len_seq,
                             [pa.num_ex, pa.simu_len])
     nw_size_seq = np.reshape(nw_size_seq,
                              [pa.num_ex, pa.simu_len, pa.num_res])
+    nw_prios = np.reshape(nw_prios,
+                          [pa.num_ex, pa.simu_len])
 
-    return nw_len_seq, nw_size_seq
+    #print(" generate_sequence_work nw_prios.shape: {}".format(nw_prios.shape))
+
+    return nw_len_seq, nw_size_seq, nw_prios
